@@ -1,0 +1,45 @@
+## Runprint execution report
+
+- **Exit code:** `1`
+- **Started:** `2026-08-17T12:00:00Z`
+- **Duration:** `3s`
+- **Record format:** `2`
+- **Runprint version:** `dev`
+- **Git dirty:** `true`
+
+### Command
+
+```json
+["go","test","./..."]
+```
+
+### Working directory
+
+```text
+~/client/project
+```
+
+### Git
+
+```text
+commit: deadbeef
+branch: main
+```
+
+### stdout
+
+````text
+before
+```
+after\x1b[2J
+````
+
+### stderr
+
+```text
+failed
+```
+
+> Review command arguments, output, and paths for sensitive data before sharing. Runprint does not scan for secrets.
+>
+> This report is not tamper-evident. Its structure is validated, but its origin and contents are not authenticated.

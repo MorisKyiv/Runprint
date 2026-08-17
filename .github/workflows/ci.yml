@@ -1,0 +1,76 @@
+name: ci
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-latest
+          - macos-latest
+          - windows-latest
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          cache: false
+      - name: Check formatting
+        if: runner.os == 'Linux'
+        run: |
+          unformatted="$(gofmt -l .)"
+          if [ -n "$unformatted" ]; then
+            echo "Files not formatted with gofmt:"
+            echo "$unformatted"
+            gofmt -d .
+            exit 1
+          fi
+      - run: go test ./...
+      - name: Vet
+        if: runner.os == 'Linux'
+        run: go vet ./...
+
+  release-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: 1.26.6
+          cache: false
+      - name: Build release artifacts twice
+        run: |
+          isolated="$(mktemp -d)"
+          mkdir -p \
+            "$isolated/source" \
+            "$isolated/home" \
+            "$isolated/tmp" \
+            "$isolated/gocache" \
+            "$isolated/gomodcache" \
+            "$isolated/gopath"
+          git archive HEAD | tar -xf - -C "$isolated/source"
+
+          go run ./scripts/release --version v0.0.0-test --output dist
+          (
+            cd "$isolated/source"
+            HOME="$isolated/home" \
+            TMPDIR="$isolated/tmp" \
+            GOCACHE="$isolated/gocache" \
+            GOMODCACHE="$isolated/gomodcache" \
+            GOPATH="$isolated/gopath" \
+            GOTELEMETRY=off \
+              go run ./scripts/release \
+                --version v0.0.0-test \
+                --output "$isolated/dist-rebuild"
+          )
+          cmp dist/checksums.txt "$isolated/dist-rebuild/checksums.txt"
